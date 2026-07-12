@@ -1,47 +1,26 @@
 package dev.berlinbruno.pecki
 
+import android.content.res.Configuration
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
-import androidx.compose.material.icons.filled.AccountBalanceWallet
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.PieChart
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.DrawerValue
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalDrawerSheet
-import androidx.compose.material3.ModalNavigationDrawer
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationDrawerItem
-import androidx.compose.material3.NavigationDrawerItemDefaults
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.rememberDrawerState
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.tooling.preview.PreviewScreenSizes
 import androidx.compose.ui.unit.dp
 import androidx.fragment.app.FragmentActivity
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -52,7 +31,19 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import dagger.hilt.android.AndroidEntryPoint
 import dev.berlinbruno.pecki.ui.navigation.Screen
+import dev.berlinbruno.pecki.ui.security.LockScreen
+import dev.berlinbruno.pecki.ui.security.PinViewModel
+import dev.berlinbruno.pecki.ui.security.SecurityViewModel
+import dev.berlinbruno.pecki.ui.settings.SettingsScreen
+import dev.berlinbruno.pecki.ui.settings.SettingsViewModel
+import dev.berlinbruno.pecki.ui.transactions.CreateTransactionScreen
+import dev.berlinbruno.pecki.ui.transactions.CreateTransactionViewModel
+import dev.berlinbruno.pecki.ui.transactions.TransactionListScreen
+import dev.berlinbruno.pecki.ui.transactions.management.CategoryManagementScreen
+import dev.berlinbruno.pecki.ui.transactions.management.ModeManagementScreen
+import dev.berlinbruno.pecki.ui.theme.Elevation
 import dev.berlinbruno.pecki.ui.theme.PeckiTheme
+import dev.berlinbruno.pecki.ui.theme.Spacing
 import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
@@ -61,8 +52,17 @@ class MainActivity : FragmentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            PeckiTheme {
-                PeckiApp()
+            val securityViewModel: SecurityViewModel = hiltViewModel()
+            val prefs by securityViewModel.securityPreferences.collectAsState(initial = null)
+
+            val darkTheme = when (prefs?.themeMode) {
+                1 -> false
+                2 -> true
+                else -> isSystemInDarkTheme()
+            }
+
+            PeckiTheme(darkTheme = darkTheme) {
+                PeckiApp(securityViewModel = securityViewModel)
             }
         }
     }
@@ -90,25 +90,56 @@ enum class HomeTabs(
 }
 
 @Composable
-fun PeckiApp() {
-    val navController = rememberNavController()
-    
-    NavHost(
-        navController = navController,
-        startDestination = Screen.Home
-    ) {
-        composable<Screen.Home> {
-            MainAppScaffold(navController)
+fun PeckiApp(
+    securityViewModel: SecurityViewModel = hiltViewModel(),
+    pinViewModel: PinViewModel = hiltViewModel()
+) {
+    val isUnlocked by securityViewModel.isUnlocked.collectAsState()
+    val prefs by securityViewModel.securityPreferences.collectAsState()
+
+    if (prefs == null) {
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = MaterialTheme.colorScheme.background
+        ) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
         }
-        // Other top-level screens if they shouldn't have bottom bar
+        return
+    }
+
+    if (prefs?.securityEnabled == true && !isUnlocked) {
+        LockScreen(securityViewModel, pinViewModel)
+    } else {
+        val navController = rememberNavController()
+
+        NavHost(
+            navController = navController,
+            startDestination = Screen.Home
+        ) {
+            composable<Screen.Home> {
+                MainAppScaffold(navController)
+            }
+        }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainAppScaffold(rootNavController: NavHostController) {
+fun MainAppScaffold(
+    rootNavController: NavHostController,
+    securityViewModel: SecurityViewModel = hiltViewModel(),
+    pinViewModel: PinViewModel = hiltViewModel(),
+    createTransactionViewModel: CreateTransactionViewModel = hiltViewModel(),
+    settingsViewModel: SettingsViewModel = hiltViewModel()
+) {
     val navController = rememberNavController()
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
+
+    val addTransactionSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var showAddTransactionSheet by remember { mutableStateOf(false) }
 
     val navigateToScreen: (Any) -> Unit = { route ->
         navController.navigate(route) {
@@ -143,6 +174,27 @@ fun MainAppScaffold(rootNavController: NavHostController) {
                 )
             }
         ) { innerPadding ->
+            if (showAddTransactionSheet) {
+                ModalBottomSheet(
+                    onDismissRequest = { showAddTransactionSheet = false },
+                    sheetState = addTransactionSheetState,
+                    shape = MaterialTheme.shapes.extraLarge,
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    tonalElevation = Elevation.level0
+                ) {
+                    CreateTransactionScreen(
+                        viewModel = createTransactionViewModel,
+                        onBackClick = {
+                            scope.launch { addTransactionSheetState.hide() }.invokeOnCompletion {
+                                if (!addTransactionSheetState.isVisible) {
+                                    showAddTransactionSheet = false
+                                }
+                            }
+                        }
+                    )
+                }
+            }
+
             NavHost(
                 navController = navController,
                 startDestination = Screen.Home,
@@ -150,11 +202,36 @@ fun MainAppScaffold(rootNavController: NavHostController) {
             ) {
                 composable<Screen.Home> { MainScreen("Dashboard", onMenuClick = openDrawer) }
                 composable<Screen.Reports> { MainScreen("Reports", onMenuClick = openDrawer) }
-                composable<Screen.Transactions> { MainScreen("Transactions", onMenuClick = openDrawer) }
+                composable<Screen.Transactions> {
+                    TransactionListScreen(
+                        onMenuClick = openDrawer,
+                        onAddTransactionClick = {
+                            createTransactionViewModel.resetState()
+                            showAddTransactionSheet = true
+                        },
+                        onEditTransactionClick = { transaction ->
+                            createTransactionViewModel.loadTransaction(transaction)
+                            showAddTransactionSheet = true
+                        }
+                    )
+                }
                 composable<Screen.Investments> { MainScreen("Investments", onMenuClick = openDrawer) }
                 composable<Screen.Budgets> { MainScreen("Budgets", onMenuClick = openDrawer) }
                 composable<Screen.ApproveTransactions> { MainScreen("Approve Transactions", onMenuClick = openDrawer) }
-                composable<Screen.Settings> { MainScreen("Settings", onMenuClick = openDrawer) }
+                composable<Screen.Settings> {
+                    SettingsScreen(
+                        securityViewModel = securityViewModel,
+                        pinViewModel = pinViewModel,
+                        settingsViewModel = settingsViewModel,
+                        onMenuClick = openDrawer
+                    )
+                }
+                composable<Screen.ManageCategories> {
+                    CategoryManagementScreen(onBackClick = { navController.popBackStack() })
+                }
+                composable<Screen.ManageModes> {
+                    ModeManagementScreen(onBackClick = { navController.popBackStack() })
+                }
             }
         }
     }
@@ -230,12 +307,21 @@ fun MainScreen(name: String, onMenuClick: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(name) },
+                title = {
+                    Text(
+                        text = name,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onMenuClick) {
                         Icon(Icons.Default.Menu, contentDescription = "Menu")
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background
+                )
             )
         }
     ) { innerPadding ->
@@ -251,10 +337,12 @@ fun Greeting(name: String, modifier: Modifier = Modifier) {
     )
 }
 
-@Preview(showBackground = true)
+@Preview(showBackground = true, name = "Light Mode")
+@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES, name = "Dark Mode")
+@PreviewScreenSizes
 @Composable
-fun GreetingPreview() {
+fun PeckiAppPreview() {
     PeckiTheme {
-        Greeting("Android")
+        PeckiApp()
     }
 }
