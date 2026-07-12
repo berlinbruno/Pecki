@@ -1,5 +1,6 @@
 package dev.berlinbruno.pecki
 
+import android.content.res.Configuration
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -15,6 +16,7 @@ import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.PieChart
 import androidx.compose.material.icons.filled.Settings
@@ -29,9 +31,11 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.NavigationDrawerItemDefaults
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -40,6 +44,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.tooling.preview.PreviewScreenSizes
 import androidx.compose.ui.unit.dp
 import androidx.fragment.app.FragmentActivity
 import androidx.navigation.NavDestination.Companion.hasRoute
@@ -54,6 +59,40 @@ import dagger.hilt.android.AndroidEntryPoint
 import dev.berlinbruno.pecki.ui.navigation.Screen
 import dev.berlinbruno.pecki.ui.theme.PeckiTheme
 import kotlinx.coroutines.launch
+
+import androidx.compose.foundation.clickable
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
+import androidx.compose.ui.graphics.Color
+import androidx.compose.material.icons.filled.Fingerprint
+import androidx.compose.material.icons.filled.Password
+import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Timer
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ElevatedCard
+import dev.berlinbruno.pecki.ui.theme.Elevation
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Switch
+import androidx.compose.ui.Alignment
+import dev.berlinbruno.pecki.ui.theme.Spacing
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.compose.runtime.collectAsState
+import dev.berlinbruno.pecki.ui.security.LockScreen
+import dev.berlinbruno.pecki.ui.security.PinEntryScreen
+import dev.berlinbruno.pecki.ui.security.PinViewModel
+import dev.berlinbruno.pecki.ui.security.SecurityViewModel
+
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 
 @AndroidEntryPoint
 class MainActivity : FragmentActivity() {
@@ -90,22 +129,36 @@ enum class HomeTabs(
 }
 
 @Composable
-fun PeckiApp() {
-    val navController = rememberNavController()
-    
-    NavHost(
-        navController = navController,
-        startDestination = Screen.Home
-    ) {
-        composable<Screen.Home> {
-            MainAppScaffold(navController)
+fun PeckiApp(
+    securityViewModel: SecurityViewModel = hiltViewModel(),
+    pinViewModel: PinViewModel = hiltViewModel()
+) {
+    val isUnlocked by securityViewModel.isUnlocked.collectAsState()
+    val prefs by securityViewModel.securityPreferences.collectAsState()
+
+    if (prefs?.securityEnabled == true && !isUnlocked) {
+        LockScreen(securityViewModel, pinViewModel)
+    } else {
+        val navController = rememberNavController()
+
+        NavHost(
+            navController = navController,
+            startDestination = Screen.Home
+        ) {
+            composable<Screen.Home> {
+                MainAppScaffold(navController)
+            }
+            // Other top-level screens if they shouldn't have bottom bar
         }
-        // Other top-level screens if they shouldn't have bottom bar
     }
 }
 
 @Composable
-fun MainAppScaffold(rootNavController: NavHostController) {
+fun MainAppScaffold(
+    rootNavController: NavHostController,
+    securityViewModel: SecurityViewModel = hiltViewModel(),
+    pinViewModel: PinViewModel = hiltViewModel()
+) {
     val navController = rememberNavController()
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -154,7 +207,197 @@ fun MainAppScaffold(rootNavController: NavHostController) {
                 composable<Screen.Investments> { MainScreen("Investments", onMenuClick = openDrawer) }
                 composable<Screen.Budgets> { MainScreen("Budgets", onMenuClick = openDrawer) }
                 composable<Screen.ApproveTransactions> { MainScreen("Approve Transactions", onMenuClick = openDrawer) }
-                composable<Screen.Settings> { MainScreen("Settings", onMenuClick = openDrawer) }
+                composable<Screen.Settings> {
+                    SettingsScreen(
+                        securityViewModel = securityViewModel,
+                        pinViewModel = pinViewModel,
+                        onMenuClick = openDrawer
+                    )
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SettingsScreen(
+    securityViewModel: SecurityViewModel,
+    pinViewModel: PinViewModel,
+    onMenuClick: () -> Unit
+) {
+    val prefs by securityViewModel.securityPreferences.collectAsState()
+    val sheetState = rememberModalBottomSheetState()
+    var showPinSheet by remember { mutableStateOf(false) }
+    var showTimeoutSheet by remember { mutableStateOf(false) }
+
+    if (showPinSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showPinSheet = false },
+            sheetState = sheetState,
+            shape = MaterialTheme.shapes.extraLarge,
+            containerColor = MaterialTheme.colorScheme.surface,
+            tonalElevation = Elevation.level0
+        ) {
+            PinEntryScreen(
+                title = "Setup PIN",
+                subtitle = "Create a 4-digit PIN",
+                viewModel = pinViewModel,
+                isSetup = true,
+                onSuccess = { showPinSheet = false }
+            )
+        }
+    }
+
+    if (showTimeoutSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showTimeoutSheet = false },
+            sheetState = sheetState,
+            shape = MaterialTheme.shapes.extraLarge,
+            containerColor = MaterialTheme.colorScheme.surface,
+            tonalElevation = Elevation.level0
+        ) {
+            AutoLockTimeoutSheet(
+                currentTimeout = prefs?.autoLockTimeoutMs ?: 0L,
+                onTimeoutSelected = {
+                    securityViewModel.setAutoLockTimeout(it)
+                    showTimeoutSheet = false
+                }
+            )
+        }
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Settings") },
+                navigationIcon = {
+                    IconButton(onClick = onMenuClick) {
+                        Icon(Icons.Default.Menu, contentDescription = "Menu")
+                    }
+                }
+            )
+        }
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .padding(Spacing.medium)
+        ) {
+            ElevatedCard(
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.large,
+                elevation = CardDefaults.elevatedCardElevation(defaultElevation = Elevation.level1),
+                colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface)
+            ) {
+                Column(modifier = Modifier.padding(vertical = Spacing.medium)) {
+                    // Header
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = Spacing.medium),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.Security,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(Spacing.medium))
+                        Column {
+                            Text(
+                                text = "App Security",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "Keep your financial data private and secure",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(Spacing.medium))
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = Spacing.medium))
+
+                    // Enable PIN
+                    ListItem(
+                        headlineContent = { Text("Enable PIN Lock") },
+                        supportingContent = { Text("Protect access with a 4-digit code") },
+                        leadingContent = { Icon(Icons.Default.Lock, contentDescription = null) },
+                        trailingContent = {
+                            Switch(
+                                checked = prefs?.securityEnabled == true,
+                                onCheckedChange = { enabled ->
+                                    if (enabled) {
+                                        showPinSheet = true
+                                    } else {
+                                        securityViewModel.disableSecurity()
+                                    }
+                                }
+                            )
+                        }
+                    )
+
+                    if (prefs?.securityEnabled == true) {
+                        // Enable Biometric
+                        ListItem(
+                            headlineContent = { Text("Biometric Unlock") },
+                            supportingContent = { Text("Use fingerprint or face recognition") },
+                            leadingContent = { Icon(Icons.Default.Fingerprint, contentDescription = null) },
+                            trailingContent = {
+                                Switch(
+                                    checked = prefs?.biometricEnabled == true,
+                                    onCheckedChange = { securityViewModel.setBiometricEnabled(it) }
+                                )
+                            }
+                        )
+
+                        // Change PIN
+                        ListItem(
+                            headlineContent = { Text("Change PIN") },
+                            leadingContent = { Icon(Icons.Default.Password, contentDescription = null) },
+                            modifier = Modifier.clickable { showPinSheet = true }
+                        )
+
+                        // Auto-lock
+                        ListItem(
+                            headlineContent = { Text("Auto-lock") },
+                            supportingContent = {
+                                val timeoutText = when (prefs?.autoLockTimeoutMs) {
+                                    0L -> "Immediately"
+                                    30000L -> "After 30 seconds"
+                                    60000L -> "After 1 minute"
+                                    300000L -> "After 5 minutes"
+                                    else -> "Immediately"
+                                }
+                                Text(timeoutText)
+                            },
+                            leadingContent = { Icon(Icons.Default.Timer, contentDescription = null) },
+                            modifier = Modifier.clickable { showTimeoutSheet = true }
+                        )
+
+                        Spacer(modifier = Modifier.height(Spacing.small))
+
+                        Button(
+                            onClick = { securityViewModel.lockNow() },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = Spacing.medium),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.errorContainer,
+                                contentColor = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                        ) {
+                            Icon(Icons.Default.Lock, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(Spacing.small))
+                            Text("Lock Now")
+                        }
+                    }
+                }
             }
         }
     }
@@ -230,12 +473,21 @@ fun MainScreen(name: String, onMenuClick: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(name) },
+                title = { 
+                    Text(
+                        text = name,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    ) 
+                },
                 navigationIcon = {
                     IconButton(onClick = onMenuClick) {
                         Icon(Icons.Default.Menu, contentDescription = "Menu")
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background
+                )
             )
         }
     ) { innerPadding ->
@@ -251,10 +503,57 @@ fun Greeting(name: String, modifier: Modifier = Modifier) {
     )
 }
 
-@Preview(showBackground = true)
 @Composable
-fun GreetingPreview() {
+fun AutoLockTimeoutSheet(
+    currentTimeout: Long,
+    onTimeoutSelected: (Long) -> Unit
+) {
+    val options = listOf(
+        0L to "Immediately",
+        30000L to "After 30 seconds",
+        60000L to "After 1 minute",
+        300000L to "After 5 minutes"
+    )
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(Spacing.medium)
+    ) {
+        Text(
+            text = "Auto-lock Timeout",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(Spacing.medium)
+        )
+        options.forEach { (timeout, label) ->
+            ListItem(
+                headlineContent = { 
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.bodyLarge
+                    ) 
+                },
+                trailingContent = {
+                    RadioButton(
+                        selected = currentTimeout == timeout,
+                        onClick = null
+                    )
+                },
+                modifier = Modifier.clickable { onTimeoutSelected(timeout) },
+                colors = ListItemDefaults.colors(containerColor = Color.Transparent)
+            )
+        }
+        Spacer(modifier = Modifier.height(Spacing.large))
+    }
+}
+
+@Preview(showBackground = true, name = "Light Mode")
+@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES, name = "Dark Mode")
+@PreviewScreenSizes
+@Composable
+fun PeckiAppPreview() {
     PeckiTheme {
-        Greeting("Android")
+        PeckiApp()
     }
 }

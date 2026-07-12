@@ -1,0 +1,16 @@
+package dev.berlinbruno.pecki.utils.security
+
+import java.security.MessageDigest
+
+object SecurityUtils {
+    /**
+     * Hashes a PIN using SHA-256. 
+     * Note: In a production app, adding a salt is recommended.
+     */
+    fun hashPin(pin: String): String {
+        val bytes = pin.toByteArray()
+        val md = MessageDigest.getInstance("SHA-256")
+        val digest = md.digest(bytes)
+        return digest.fold("") { str, it -> str + "%02x".format(it) }
+    }
+}
