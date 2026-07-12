@@ -1,3 +1,4 @@
+# Android Studio
 *.iml
 .gradle
 /local.properties
@@ -9,7 +10,19 @@
 /.idea/assetWizardSettings.xml
 .DS_Store
 /build
-/captures
-.externalNativeBuild
-.cxx
-local.properties
+
+# Built variants
+*.apk
+*.aar
+*.ap_
+*.aab
+
+# Generated Files
+cap_status.json
+/captures/
+gen/
+
+# Secrets (Important for Privacy-First)
+google-services.json
+*.keystore
+*.jks

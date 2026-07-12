@@ -1,0 +1,92 @@
+name: Pecki Development CI
+
+on:
+  push:
+    branches: [ dev ]
+  pull_request:
+    branches: [ dev ]
+
+jobs:
+  # 1. Validation: Ensures the Gradle Wrapper is safe
+  validate_wrapper:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: gradle/actions/wrapper-validation@v3
+
+  # 2. Static Analysis: Lint, Detekt, and Ktlint
+  static_analysis:
+    needs: validate_wrapper
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Run Android Lint
+        run: ./gradlew lintDebug
+        
+      # Note: Detekt and Ktlint jobs will only work if the plugins are applied in build.gradle.kts
+      # - name: Run Detekt
+      #   run: ./gradlew detekt
+        
+      # - name: Run Ktlint
+      #   run: ./gradlew ktlintCheck
+
+  # 3. Unit Testing
+  unit_tests:
+    needs: static_analysis
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Run Unit Tests
+        run: ./gradlew testDebugUnitTest
+
+  # 4. Build & Artifact Upload
+  build:
+    needs: unit_tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Assemble Debug APK
+        run: ./gradlew assembleDebug
+
+      - name: Prepare APK Artifact
+        id: prepare_artifact
+        run: |
+          VERSION=$(grep "versionName =" app/build.gradle.kts | awk -F'"' '{print $2}')
+          DATE=$(date +'%Y-%m-%d')
+          APK_NAME="Pecki-v$VERSION-$DATE"
+          mv app/build/outputs/apk/debug/app-debug.apk app/build/outputs/apk/debug/$APK_NAME.apk
+          echo "apk_name=$APK_NAME" >> $GITHUB_OUTPUT
+
+      - name: Upload Debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.prepare_artifact.outputs.apk_name }}
+          path: app/build/outputs/apk/debug/${{ steps.prepare_artifact.outputs.apk_name }}.apk
+          retention-days: 7
