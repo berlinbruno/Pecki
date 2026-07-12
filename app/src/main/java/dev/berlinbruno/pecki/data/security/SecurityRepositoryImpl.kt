@@ -14,6 +14,10 @@ class SecurityRepositoryImpl @Inject constructor(
 
     override val securityPreferences: Flow<SecurityPreferences> = dataSource.securityPreferencesFlow
 
+    override suspend fun setThemeMode(mode: Int) {
+        dataSource.updateThemeMode(mode)
+    }
+
     override suspend fun setSecurityEnabled(enabled: Boolean) {
         dataSource.updateSecurityEnabled(enabled)
     }

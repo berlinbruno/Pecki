@@ -5,6 +5,7 @@ import kotlinx.coroutines.flow.Flow
 
 interface SecurityRepository {
     val securityPreferences: Flow<SecurityPreferences>
+    suspend fun setThemeMode(mode: Int)
     suspend fun setSecurityEnabled(enabled: Boolean)
     suspend fun setBiometricEnabled(enabled: Boolean)
     suspend fun setAutoLockTimeout(timeoutMs: Long)

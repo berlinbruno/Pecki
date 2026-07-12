@@ -17,6 +17,7 @@ class SecurityPreferencesDataSource @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
     private object PreferencesKeys {
+        val THEME_MODE = intPreferencesKey("theme_mode")
         val SECURITY_ENABLED = booleanPreferencesKey("security_enabled")
         val BIOMETRIC_ENABLED = booleanPreferencesKey("biometric_enabled")
         val AUTO_LOCK_TIMEOUT = longPreferencesKey("auto_lock_timeout")
@@ -30,6 +31,7 @@ class SecurityPreferencesDataSource @Inject constructor(
     val securityPreferencesFlow: Flow<SecurityPreferences> = context.dataStore.data
         .map { preferences ->
             SecurityPreferences(
+                themeMode = preferences[PreferencesKeys.THEME_MODE] ?: 0,
                 securityEnabled = preferences[PreferencesKeys.SECURITY_ENABLED] ?: false,
                 biometricEnabled = preferences[PreferencesKeys.BIOMETRIC_ENABLED] ?: false,
                 autoLockTimeoutMs = preferences[PreferencesKeys.AUTO_LOCK_TIMEOUT] ?: 0,
@@ -40,6 +42,12 @@ class SecurityPreferencesDataSource @Inject constructor(
                 cooldownUntil = preferences[PreferencesKeys.COOLDOWN_UNTIL] ?: 0
             )
         }
+
+    suspend fun updateThemeMode(mode: Int) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.THEME_MODE] = mode
+        }
+    }
 
     suspend fun updateSecurityEnabled(enabled: Boolean) {
         context.dataStore.edit { preferences ->

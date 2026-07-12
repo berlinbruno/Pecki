@@ -4,27 +4,48 @@ import android.content.res.Configuration
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Password
 import androidx.compose.material.icons.filled.PieChart
+import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationBar
@@ -33,20 +54,32 @@ import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.NavigationDrawerItemDefaults
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDrawerState
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewScreenSizes
 import androidx.compose.ui.unit.dp
 import androidx.fragment.app.FragmentActivity
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -57,42 +90,15 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import dagger.hilt.android.AndroidEntryPoint
 import dev.berlinbruno.pecki.ui.navigation.Screen
-import dev.berlinbruno.pecki.ui.theme.PeckiTheme
-import kotlinx.coroutines.launch
-
-import androidx.compose.foundation.clickable
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.ListItemDefaults
-import androidx.compose.ui.graphics.Color
-import androidx.compose.material.icons.filled.Fingerprint
-import androidx.compose.material.icons.filled.Password
-import androidx.compose.material.icons.filled.Security
-import androidx.compose.material.icons.filled.Timer
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ElevatedCard
-import dev.berlinbruno.pecki.ui.theme.Elevation
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Switch
-import androidx.compose.ui.Alignment
-import dev.berlinbruno.pecki.ui.theme.Spacing
-import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.compose.runtime.collectAsState
 import dev.berlinbruno.pecki.ui.security.LockScreen
 import dev.berlinbruno.pecki.ui.security.PinEntryScreen
 import dev.berlinbruno.pecki.ui.security.PinViewModel
 import dev.berlinbruno.pecki.ui.security.SecurityViewModel
-
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.rememberModalBottomSheetState
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import dev.berlinbruno.pecki.ui.theme.Elevation
+import dev.berlinbruno.pecki.ui.theme.PeckiTheme
+import dev.berlinbruno.pecki.ui.theme.Spacing
+import kotlinx.coroutines.launch
+import kotlinx.serialization.Serializable
 
 @AndroidEntryPoint
 class MainActivity : FragmentActivity() {
@@ -100,8 +106,17 @@ class MainActivity : FragmentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            PeckiTheme {
-                PeckiApp()
+            val securityViewModel: SecurityViewModel = hiltViewModel()
+            val prefs by securityViewModel.securityPreferences.collectAsState(initial = null)
+            
+            val darkTheme = when (prefs?.themeMode) {
+                1 -> false
+                2 -> true
+                else -> isSystemInDarkTheme()
+            }
+
+            PeckiTheme(darkTheme = darkTheme) {
+                PeckiApp(securityViewModel = securityViewModel)
             }
         }
     }
@@ -148,7 +163,6 @@ fun PeckiApp(
             composable<Screen.Home> {
                 MainAppScaffold(navController)
             }
-            // Other top-level screens if they shouldn't have bottom bar
         }
     }
 }
@@ -227,7 +241,7 @@ fun SettingsScreen(
     onMenuClick: () -> Unit
 ) {
     val prefs by securityViewModel.securityPreferences.collectAsState()
-    val sheetState = rememberModalBottomSheetState()
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var showPinSheet by remember { mutableStateOf(false) }
     var showTimeoutSheet by remember { mutableStateOf(false) }
 
@@ -270,12 +284,21 @@ fun SettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Settings") },
+                title = { 
+                    Text(
+                        text = "Settings",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    ) 
+                },
                 navigationIcon = {
                     IconButton(onClick = onMenuClick) {
                         Icon(Icons.Default.Menu, contentDescription = "Menu")
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background
+                )
             )
         }
     ) { innerPadding ->
@@ -283,8 +306,89 @@ fun SettingsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(Spacing.medium)
+                .padding(Spacing.medium),
+            verticalArrangement = Arrangement.spacedBy(Spacing.medium)
         ) {
+            // Appearance Card
+            ElevatedCard(
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.large,
+                elevation = CardDefaults.elevatedCardElevation(defaultElevation = Elevation.level1),
+                colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface)
+            ) {
+                Column(modifier = Modifier.padding(vertical = Spacing.medium)) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = Spacing.medium),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.Palette,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(Spacing.medium))
+                        Column {
+                            Text(
+                                text = "Appearance",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "Customize the app's look and feel",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(Spacing.medium))
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = Spacing.medium))
+
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = Spacing.medium)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(vertical = Spacing.small)
+                        ) {
+                            Icon(
+                                Icons.Default.Palette,
+                                contentDescription = null,
+                                modifier = Modifier.size(24.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.width(Spacing.medium))
+                            Text(
+                                text = "Theme",
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                        }
+                        
+                        val options = listOf("System", "Light", "Dark")
+                        SingleChoiceSegmentedButtonRow(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = Spacing.small)
+                        ) {
+                            options.forEachIndexed { index, label ->
+                                SegmentedButton(
+                                    shape = SegmentedButtonDefaults.itemShape(index = index, count = options.size),
+                                    onClick = { securityViewModel.setThemeMode(index) },
+                                    selected = (prefs?.themeMode ?: 0) == index,
+                                    label = { Text(label) }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Security Card
             ElevatedCard(
                 modifier = Modifier.fillMaxWidth(),
                 shape = MaterialTheme.shapes.large,
@@ -339,7 +443,8 @@ fun SettingsScreen(
                                     }
                                 }
                             )
-                        }
+                        },
+                        colors = ListItemDefaults.colors(containerColor = Color.Transparent)
                     )
 
                     if (prefs?.securityEnabled == true) {
@@ -353,14 +458,16 @@ fun SettingsScreen(
                                     checked = prefs?.biometricEnabled == true,
                                     onCheckedChange = { securityViewModel.setBiometricEnabled(it) }
                                 )
-                            }
+                            },
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent)
                         )
 
                         // Change PIN
                         ListItem(
                             headlineContent = { Text("Change PIN") },
                             leadingContent = { Icon(Icons.Default.Password, contentDescription = null) },
-                            modifier = Modifier.clickable { showPinSheet = true }
+                            modifier = Modifier.clickable { showPinSheet = true },
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent)
                         )
 
                         // Auto-lock
@@ -377,7 +484,8 @@ fun SettingsScreen(
                                 Text(timeoutText)
                             },
                             leadingContent = { Icon(Icons.Default.Timer, contentDescription = null) },
-                            modifier = Modifier.clickable { showTimeoutSheet = true }
+                            modifier = Modifier.clickable { showTimeoutSheet = true },
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent)
                         )
 
                         Spacer(modifier = Modifier.height(Spacing.small))

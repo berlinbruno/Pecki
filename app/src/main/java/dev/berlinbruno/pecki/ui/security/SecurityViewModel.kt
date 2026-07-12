@@ -22,6 +22,12 @@ class SecurityViewModel @Inject constructor(
     val isUnlocked = sessionManager.isUnlocked
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
+    fun setThemeMode(mode: Int) {
+        viewModelScope.launch {
+            securityRepository.setThemeMode(mode)
+        }
+    }
+
     fun setBiometricEnabled(enabled: Boolean) {
         viewModelScope.launch {
             securityRepository.setBiometricEnabled(enabled)
