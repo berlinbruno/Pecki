@@ -2,9 +2,9 @@ name: Pecki Development CI
 
 on:
   push:
-    branches: [ dev ]
+    branches: [ devlop ]
   pull_request:
-    branches: [ dev ]
+    branches: [ devlop ]
 
 jobs:
   # 1. Validation: Ensures the Gradle Wrapper is safe
