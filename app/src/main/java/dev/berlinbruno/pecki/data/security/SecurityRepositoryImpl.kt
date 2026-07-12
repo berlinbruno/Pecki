@@ -18,6 +18,14 @@ class SecurityRepositoryImpl @Inject constructor(
         dataSource.updateThemeMode(mode)
     }
 
+    override suspend fun setCurrencyCode(code: String) {
+        dataSource.updateCurrencyCode(code)
+    }
+
+    override suspend fun setTimeRangeType(type: Int) {
+        dataSource.updateTimeRangeType(type)
+    }
+
     override suspend fun setSecurityEnabled(enabled: Boolean) {
         dataSource.updateSecurityEnabled(enabled)
     }

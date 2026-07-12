@@ -18,4 +18,6 @@ sealed interface Screen {
     @Serializable object Search : Screen
     @Serializable object Notifications : Screen
     @Serializable object Profile : Screen
+    @Serializable object ManageCategories : Screen
+    @Serializable object ManageModes : Screen
 }

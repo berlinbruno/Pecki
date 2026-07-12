@@ -18,6 +18,8 @@ class SecurityPreferencesDataSource @Inject constructor(
 ) {
     private object PreferencesKeys {
         val THEME_MODE = intPreferencesKey("theme_mode")
+        val CURRENCY_CODE = stringPreferencesKey("currency_code")
+        val TIME_RANGE_TYPE = intPreferencesKey("time_range_type")
         val SECURITY_ENABLED = booleanPreferencesKey("security_enabled")
         val BIOMETRIC_ENABLED = booleanPreferencesKey("biometric_enabled")
         val AUTO_LOCK_TIMEOUT = longPreferencesKey("auto_lock_timeout")
@@ -32,6 +34,8 @@ class SecurityPreferencesDataSource @Inject constructor(
         .map { preferences ->
             SecurityPreferences(
                 themeMode = preferences[PreferencesKeys.THEME_MODE] ?: 0,
+                currencyCode = preferences[PreferencesKeys.CURRENCY_CODE] ?: "€",
+                timeRangeType = preferences[PreferencesKeys.TIME_RANGE_TYPE] ?: 0,
                 securityEnabled = preferences[PreferencesKeys.SECURITY_ENABLED] ?: false,
                 biometricEnabled = preferences[PreferencesKeys.BIOMETRIC_ENABLED] ?: false,
                 autoLockTimeoutMs = preferences[PreferencesKeys.AUTO_LOCK_TIMEOUT] ?: 0,
@@ -46,6 +50,18 @@ class SecurityPreferencesDataSource @Inject constructor(
     suspend fun updateThemeMode(mode: Int) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.THEME_MODE] = mode
+        }
+    }
+
+    suspend fun updateCurrencyCode(code: String) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.CURRENCY_CODE] = code
+        }
+    }
+
+    suspend fun updateTimeRangeType(type: Int) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.TIME_RANGE_TYPE] = type
         }
     }
 

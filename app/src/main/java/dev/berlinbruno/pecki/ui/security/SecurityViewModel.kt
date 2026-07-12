@@ -28,6 +28,18 @@ class SecurityViewModel @Inject constructor(
         }
     }
 
+    fun setCurrencyCode(code: String) {
+        viewModelScope.launch {
+            securityRepository.setCurrencyCode(code)
+        }
+    }
+
+    fun setTimeRangeType(type: Int) {
+        viewModelScope.launch {
+            securityRepository.setTimeRangeType(type)
+        }
+    }
+
     fun setBiometricEnabled(enabled: Boolean) {
         viewModelScope.launch {
             securityRepository.setBiometricEnabled(enabled)
