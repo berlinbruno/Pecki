@@ -34,7 +34,7 @@ fun LockScreen(
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             PinEntryScreen(
-                title = "Locked",
+                title = "Pecki is Locked",
                 subtitle = "Enter PIN to unlock",
                 viewModel = pinViewModel,
                 modifier = Modifier.fillMaxSize(),

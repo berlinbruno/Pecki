@@ -2,17 +2,18 @@ package dev.berlinbruno.pecki.ui.security
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Pets
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import dev.berlinbruno.pecki.R
 import dev.berlinbruno.pecki.ui.theme.Spacing
 import kotlin.math.roundToInt
 
@@ -60,11 +61,10 @@ fun PinEntryScreen(
             Spacer(modifier = Modifier.height(Spacing.huge))
             
             // Branding
-            Icon(
-                imageVector = Icons.Default.Pets,
+            Image(
+                painter = painterResource(id = R.drawable.lock_mascot),
                 contentDescription = null,
-                modifier = Modifier.size(Spacing.huge),
-                tint = MaterialTheme.colorScheme.primary
+                modifier = Modifier.size(120.dp)
             )
             
             Spacer(modifier = Modifier.height(Spacing.large))
