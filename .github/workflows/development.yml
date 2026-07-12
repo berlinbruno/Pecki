@@ -11,7 +11,7 @@ jobs:
   validate_wrapper:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: gradle/actions/wrapper-validation@v6
 
   # 2. Static Analysis: Lint, Detekt, and Ktlint
@@ -19,7 +19,7 @@ jobs:
     needs: validate_wrapper
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: set up JDK 21
         uses: actions/setup-java@v5
         with:
@@ -44,7 +44,7 @@ jobs:
     needs: static_analysis
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: set up JDK 21
         uses: actions/setup-java@v5
         with:
@@ -62,7 +62,7 @@ jobs:
     needs: unit_tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: set up JDK 21
         uses: actions/setup-java@v5
         with:
