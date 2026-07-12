@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: gradle/actions/wrapper-validation@v3
+      - uses: gradle/actions/wrapper-validation@v6
 
   # 2. Static Analysis: Lint, Detekt, and Ktlint
   static_analysis:
@@ -27,7 +27,7 @@ jobs:
           distribution: 'temurin'
           
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
+        uses: gradle/actions/setup-gradle@v6
 
       - name: Run Android Lint
         run: ./gradlew lintDebug
@@ -52,7 +52,7 @@ jobs:
           distribution: 'temurin'
           
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
+        uses: gradle/actions/setup-gradle@v6
 
       - name: Run Unit Tests
         run: ./gradlew testDebugUnitTest
@@ -70,7 +70,7 @@ jobs:
           distribution: 'temurin'
           
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
+        uses: gradle/actions/setup-gradle@v6
 
       - name: Assemble Debug APK
         run: ./gradlew assembleDebug
